@@ -4,7 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha512"
 	"fmt"
-	"github.com/BASChain/go-payable-account/edwards25519"
+	"github.com/BASChain/go-account/edwards25519"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/scrypt"
 )
