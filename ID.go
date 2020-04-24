@@ -64,7 +64,7 @@ func (id ID) IsValid() bool {
 	return true
 }
 
-func ConvertToID(addr string) (ID, error) {
+func ToIDByStr(addr string) (ID, error) {
 	id := ID(addr)
 	if id.IsValid() {
 		return id, nil
@@ -72,6 +72,6 @@ func ConvertToID(addr string) (ID, error) {
 	return "", EInvalidID
 }
 
-func ConvertToID2(key []byte) ID {
+func ToIDByBytes(key []byte) ID {
 	return ID(AccPrefix + base58.Encode(key))
 }

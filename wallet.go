@@ -7,6 +7,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"io/ioutil"
 )
 
 type Wallet interface {
@@ -87,4 +88,21 @@ func VerifySubSig(subAddr ID, sig []byte, v interface{}) bool {
 	}
 
 	return ed25519.Verify(subAddr.ToPubKey(), data, sig)
+}
+func LoadWallet(wPath string, wallet Wallet) error {
+	jsonStr, err := ioutil.ReadFile(wPath)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(jsonStr, wallet); err != nil {
+		return err
+	}
+	return nil
+}
+func LoadWalletFromJson(jsonStr string, wallet Wallet) error {
+	if err := json.Unmarshal([]byte(jsonStr), wallet); err != nil {
+		return err
+	}
+	return nil
 }

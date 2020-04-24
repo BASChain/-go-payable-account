@@ -32,7 +32,7 @@ type PayableWallet struct {
 	key       *WalletKey          `json:"-"`
 }
 
-func NewWallet(auth string) (Wallet, error) {
+func NewPayableWallet(auth string) (Wallet, error) {
 	privateKeyECDSA, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func NewWallet(auth string) (Wallet, error) {
 	obj := &PayableWallet{
 		Version:   WalletVersion,
 		MainAddr:  crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
-		SubAddr:   ConvertToID2(pub),
+		SubAddr:   ToIDByBytes(pub),
 		Crypto:    cryptoStruct,
 		SubCipher: cipherTxt,
 		key: &WalletKey{
@@ -65,27 +65,6 @@ func NewWallet(auth string) (Wallet, error) {
 		},
 	}
 	return obj, nil
-}
-
-func LoadWallet(wPath string) (Wallet, error) {
-	jsonStr, err := ioutil.ReadFile(wPath)
-	if err != nil {
-		return nil, err
-	}
-
-	w := new(PayableWallet)
-	if err := json.Unmarshal(jsonStr, w); err != nil {
-		return nil, err
-	}
-	return w, nil
-}
-
-func LoadWalletFromJson(jsonStr string) (Wallet, error) {
-	w := new(PayableWallet)
-	if err := json.Unmarshal([]byte(jsonStr), w); err != nil {
-		return nil, err
-	}
-	return w, nil
 }
 
 func (pw *PayableWallet) SignKey() *ecdsa.PrivateKey {
@@ -196,6 +175,5 @@ func (pw *PayableWallet) ExportEth(auth, eAuth, path string) error {
 	if err := ioutil.WriteFile(path, newJson, 0644); err != nil {
 		return fmt.Errorf("error writing new keyfile to disk: %v", err)
 	}
-
 	return nil
 }
