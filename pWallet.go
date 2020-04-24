@@ -3,27 +3,103 @@ package account
 import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pborman/uuid"
 	"io/ioutil"
 )
 
-func (pw *PWallet) SignKey() *ecdsa.PrivateKey {
+const (
+	WalletVersion = 1
+)
+
+type WalletKey struct {
+	SubPriKey  ed25519.PrivateKey
+	MainPriKey *ecdsa.PrivateKey
+}
+
+type PayableWallet struct {
+	Version   int                 `json:"version"`
+	MainAddr  common.Address      `json:"mainAddress"`
+	Crypto    keystore.CryptoJSON `json:"crypto"`
+	SubAddr   ID                  `json:"subAddress"`
+	SubCipher string              `json:"subCipher"`
+	key       *WalletKey          `json:"-"`
+}
+
+func NewWallet(auth string) (Wallet, error) {
+	privateKeyECDSA, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	keyBytes := math.PaddedBigBytes(privateKeyECDSA.D, 32)
+	cryptoStruct, err := keystore.EncryptDataV3(keyBytes, []byte(auth), keystore.StandardScryptN, keystore.StandardScryptP)
+	if err != nil {
+		return nil, err
+	}
+
+	pub, pri, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	cipherTxt, err := encryptSubPriKey(pri, pub, auth)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := &PayableWallet{
+		Version:   WalletVersion,
+		MainAddr:  crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
+		SubAddr:   ConvertToID2(pub),
+		Crypto:    cryptoStruct,
+		SubCipher: cipherTxt,
+		key: &WalletKey{
+			SubPriKey:  pri,
+			MainPriKey: privateKeyECDSA,
+		},
+	}
+	return obj, nil
+}
+
+func LoadWallet(wPath string) (Wallet, error) {
+	jsonStr, err := ioutil.ReadFile(wPath)
+	if err != nil {
+		return nil, err
+	}
+
+	w := new(PayableWallet)
+	if err := json.Unmarshal(jsonStr, w); err != nil {
+		return nil, err
+	}
+	return w, nil
+}
+
+func LoadWalletFromJson(jsonStr string) (Wallet, error) {
+	w := new(PayableWallet)
+	if err := json.Unmarshal([]byte(jsonStr), w); err != nil {
+		return nil, err
+	}
+	return w, nil
+}
+
+func (pw *PayableWallet) SignKey() *ecdsa.PrivateKey {
 	return pw.key.MainPriKey
 }
 
-func (pw *PWallet) MainAddress() common.Address {
+func (pw *PayableWallet) MainAddress() common.Address {
 	return pw.MainAddr
 }
-func (pw *PWallet) SubAddress() ID {
+func (pw *PayableWallet) SubAddress() ID {
 	return pw.SubAddr
 }
 
-func (pw *PWallet) SignJson(v interface{}) ([]byte, error) {
+func (pw *PayableWallet) SignJson(v interface{}) ([]byte, error) {
 	rawBytes, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
@@ -33,28 +109,28 @@ func (pw *PWallet) SignJson(v interface{}) ([]byte, error) {
 	return crypto.Sign(hash, pw.key.MainPriKey)
 }
 
-func (pw *PWallet) Sign(v []byte) ([]byte, error) {
+func (pw *PayableWallet) Sign(v []byte) ([]byte, error) {
 	return crypto.Sign(v, pw.key.MainPriKey)
 }
 
-func (pw *PWallet) CryptKey() ed25519.PrivateKey {
+func (pw *PayableWallet) CryptKey() ed25519.PrivateKey {
 	return pw.key.SubPriKey
 }
 
-func (pw *PWallet) SignJSONSub(v interface{}) []byte {
+func (pw *PayableWallet) SignJSONSub(v interface{}) []byte {
 	rawBytes, _ := json.Marshal(v)
 	return ed25519.Sign(pw.key.SubPriKey, rawBytes)
 }
 
-func (pw *PWallet) SignSub(v []byte) []byte {
+func (pw *PayableWallet) SignSub(v []byte) []byte {
 	return ed25519.Sign(pw.key.SubPriKey, v)
 }
 
-func (pw *PWallet) IsOpen() bool {
+func (pw *PayableWallet) IsOpen() bool {
 	return pw.key != nil
 }
 
-func (pw *PWallet) SaveToPath(wPath string) error {
+func (pw *PayableWallet) SaveToPath(wPath string) error {
 	bytes, err := json.MarshalIndent(pw, "", "\t")
 	if err != nil {
 		return err
@@ -62,7 +138,7 @@ func (pw *PWallet) SaveToPath(wPath string) error {
 	return ioutil.WriteFile(wPath, bytes, 0644)
 }
 
-func (pw *PWallet) Open(auth string) error {
+func (pw *PayableWallet) Open(auth string) error {
 	if pw.key != nil {
 		return fmt.Errorf("wallet already opened")
 	}
@@ -84,11 +160,11 @@ func (pw *PWallet) Open(auth string) error {
 	return nil
 }
 
-func (pw *PWallet) Close() {
+func (pw *PayableWallet) Close() {
 	pw.key = nil
 }
 
-func (pw *PWallet) String() string {
+func (pw *PayableWallet) String() string {
 	b, e := json.Marshal(pw)
 	if e != nil {
 		return ""
@@ -96,7 +172,7 @@ func (pw *PWallet) String() string {
 	return string(b)
 }
 
-func (pw *PWallet) ExportEth(auth, eAuth, path string) error {
+func (pw *PayableWallet) ExportEth(auth, eAuth, path string) error {
 
 	keyBytes, err := keystore.DecryptDataV3(pw.Crypto, auth)
 	if err != nil {
