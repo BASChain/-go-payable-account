@@ -48,7 +48,7 @@ func NewPayableWallet(auth string) (Wallet, error) {
 	if err != nil {
 		return nil, err
 	}
-	cipherTxt, err := encryptSubPriKey(pri, pub, auth)
+	cipherTxt, err := EncryptSubPriKey(pri, pub, auth)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +126,7 @@ func (pw *PayableWallet) Open(auth string) error {
 	if err != nil {
 		return err
 	}
-
-	subKey, err := decryptSubPriKey(pw.SubAddr, pw.SubCipher, auth)
+	subKey, err := DecryptSubPriKey(pw.SubAddr.ToPubKey(), pw.SubCipher, auth)
 	if err != nil {
 		return err
 	}

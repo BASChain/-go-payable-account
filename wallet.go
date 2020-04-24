@@ -30,7 +30,7 @@ type Wallet interface {
 	ExportEth(auth, eAuth, path string) error
 }
 
-func encryptSubPriKey(priKey ed25519.PrivateKey, pubKey ed25519.PublicKey, auth string) (string, error) {
+func EncryptSubPriKey(priKey ed25519.PrivateKey, pubKey ed25519.PublicKey, auth string) (string, error) {
 	aesKey, err := AESKey(pubKey[:KP.S], auth)
 	if err != nil {
 		return "", err
@@ -42,8 +42,7 @@ func encryptSubPriKey(priKey ed25519.PrivateKey, pubKey ed25519.PublicKey, auth 
 	return base58.Encode(cipher), nil
 }
 
-func decryptSubPriKey(subPub ID, cpTxt, auth string) (ed25519.PrivateKey, error) {
-	pk := subPub.ToPubKey()
+func DecryptSubPriKey(pk ed25519.PublicKey, cpTxt, auth string) (ed25519.PrivateKey, error) {
 	aesKey, err := AESKey(pk[:KP.S], auth)
 	if err != nil {
 		return nil, err
