@@ -47,22 +47,10 @@ func Encrypt(key []byte, plainTxt []byte) ([]byte, error) {
 
 func Decrypt(key []byte, cipherTxt []byte) ([]byte, error) {
 
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
+	_,plainTxt,err:=DecryptAndIV(key,cipherTxt)
 
-	if len(cipherTxt) < aes.BlockSize {
-		return nil, fmt.Errorf("cipher text too short")
-	}
+	return plainTxt,err
 
-	iv := cipherTxt[:aes.BlockSize]
-	cipherTxt = cipherTxt[aes.BlockSize:]
-
-	stream := cipher.NewCFBDecrypter(block, iv)
-	stream.XORKeyStream(cipherTxt, cipherTxt)
-
-	return cipherTxt, nil
 }
 
 func DecryptAndIV(key []byte, cipherTxt []byte) (iv, plainTxt []byte, err error) {
