@@ -64,3 +64,22 @@ func Decrypt(key []byte, cipherTxt []byte) ([]byte, error) {
 
 	return cipherTxt, nil
 }
+
+func DecryptAndIV(key []byte, cipherTxt []byte) (iv, plainTxt []byte, err error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil,nil, err
+	}
+
+	if len(cipherTxt) < aes.BlockSize {
+		return nil,nil, fmt.Errorf("cipher text too short")
+	}
+
+	iv = cipherTxt[:aes.BlockSize]
+	cipherTxt = cipherTxt[aes.BlockSize:]
+
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(cipherTxt, cipherTxt)
+
+	return iv,cipherTxt, nil
+}
